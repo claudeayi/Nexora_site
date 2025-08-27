@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600">
+  <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#7c9bff"/><stop offset="1" stop-color="#20c997"/></linearGradient></defs>
+  <rect width="1200" height="600" fill="#0b1020"/>
+  <circle cx="350" cy="350" r="220" fill="url(#g)" opacity="0.35"/>
+  <circle cx="850" cy="280" r="180" fill="url(#g)" opacity="0.25"/>
+  <rect x="200" y="180" rx="18" ry="18" width="800" height="260" fill="#121a36" stroke="#23305c"/>
+  <text x="240" y="260" font-size="46" fill="#eaf0ff" font-family="Inter, sans-serif">Nexora – IA Growth Copilot</text>
+  <text x="240" y="315" font-size="22" fill="#9fb0d9" font-family="Inter, sans-serif">CRM intelligent · Tracking · A/B · Billing · Insights IA</text>
+</svg>
