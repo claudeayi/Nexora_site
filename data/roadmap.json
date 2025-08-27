@@ -1,0 +1,14 @@
+{
+  "building": [
+    { "title":"Bandits contextuels", "desc":"Assignation A/B adaptative selon segment et device." },
+    { "title":"Anti-fraude clics", "desc":"Détection d’anomalies et filtrage IA en temps réel." }
+  ],
+  "planned": [
+    { "title":"Destinations data warehouse", "desc":"Export BigQuery / Snowflake / S3." },
+    { "title":"Règles IA multi-canal", "desc":"Budget et enchères automatiques par campagne." }
+  ],
+  "done": [
+    { "title":"Pixel 1×1 + SDK JS", "desc":"Tracking, UTMs, pageview et événements custom." },
+    { "title":"Facturation multi-provider", "desc":"Stripe, PayPal, CinetPay & mode local." }
+  ]
+}
