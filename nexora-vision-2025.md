@@ -1,6 +1,3 @@
-
-## 22) `data/posts/nexora-vision-2025.md`
-```markdown
 # Vision Nexora 2025
 
 Notre objectif : un **copilote autonome** capable de **recommander, tester, activer**.
