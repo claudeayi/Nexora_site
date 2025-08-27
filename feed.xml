@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <title>Nexora Blog</title>
+  <link>https://example.com</link>
+  <description>Actualités produit Nexora</description>
+  <language>fr</language>
+  <item><title>Bien débuter avec Nexora</title><link>https://example.com/#/blog/bien-debuter-avec-nexora</link><guid>bien-debuter-avec-nexora</guid></item>
+  <item><title>Vision Nexora 2025</title><link>https://example.com/#/blog/nexora-vision-2025</link><guid>nexora-vision-2025</guid></item>
+  <item><title>Guide attribution omnicanale</title><link>https://example.com/#/blog/guide-attribution-omni</link><guid>guide-attribution-omni</guid></item>
+</channel></rss>
