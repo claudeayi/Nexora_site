@@ -1,0 +1,28 @@
+nexora_site/
+├─ index.html
+├─ styles.css
+├─ app.js
+├─ router.js
+├─ components.js
+├─ i18n.js
+├─ manifest.webmanifest
+├─ sw.js
+├─ robots.txt
+├─ sitemap.xml
+├─ feed.xml
+├─ 404.html
+├─ netlify.toml
+├─ vercel.json
+├─ assets/
+│  ├─ logo.svg
+│  └─ hero.svg
+├─ pages/
+│  ├─ privacy.html
+│  └─ terms.html
+└─ data/
+   ├─ posts.json
+   ├─ roadmap.json
+   └─ posts/
+      ├─ bien-debuter-avec-nexora.md
+      ├─ nexora-vision-2025.md
+      └─ guide-attribution-omni.md
