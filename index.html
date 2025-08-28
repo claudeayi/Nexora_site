@@ -1,92 +1,78 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Nexora – Copilote IA pour la croissance</title>
-  <meta name="description" content="Nexora est le copilote IA tout-en-un pour la croissance : CRM intelligent, tracking, A/B testing, facturation et insights IA."/>
-  <link rel="icon" href="/assets/logo.svg" type="image/svg+xml"/>
-  <link rel="manifest" href="/manifest.webmanifest"/>
-  <meta name="theme-color" content="#0b1020"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Nexora — Copilote IA pour la croissance numérique</title>
+  <meta name="description" content="Nexora : CRM intelligent, tracking, A/B testing, facturation multi-devises et copilote IA.">
+  <link rel="icon" href="assets/logo.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0b1020">
 
-  <!-- OpenGraph -->
-  <meta property="og:title" content="Nexora – IA Growth Copilot"/>
-  <meta property="og:description" content="CRM + Tracking + A/B + Billing, dopés à l’IA."/>
-  <meta property="og:type" content="website"/>
-  <meta property="og:image" content="/assets/hero.svg"/>
-  <meta property="og:url" content="https://example.com"/>
+  <!-- Open Graph / Twitter -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Nexora — Copilote IA pour la croissance numérique">
+  <meta property="og:description" content="CRM + Tracking + A/B + Billing + IA en une seule plateforme.">
+  <meta property="og:image" content="assets/hero.svg">
+  <meta name="twitter:card" content="summary_large_image">
 
-  <!-- JSON-LD -->
+  <!-- Schema.org -->
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Nexora","applicationCategory":"CRM","operatingSystem":"Web","offers":{"@type":"Offer","price":"19","priceCurrency":"USD"},"url":"https://example.com","description":"Copilote IA pour la croissance : CRM, tracking, A/B, facturation et insights."}
+  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Nexora",
+   "applicationCategory":"MarketingApplication","operatingSystem":"Web",
+   "offers":{"@type":"Offer","price":"29","priceCurrency":"EUR"}}
   </script>
 
-  <link rel="preload" href="/assets/logo.svg" as="image">
-  <link rel="stylesheet" href="/styles.css"/>
+  <link rel="preload" as="image" href="assets/hero.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    nav[role="navigation"] a.active{border-bottom:2px solid #7c9bff}
+    :focus{outline:2px solid #7c9bff;outline-offset:2px}
+    img[loading="lazy"]{filter:saturate(.97)}
+    header .api-field{display:flex;gap:8px;align-items:center}
+    header .api-input{width:240px;padding:6px 8px;border-radius:8px;border:1px solid #25315c;background:#0f1733;color:#eaf0ff}
+  </style>
 </head>
 <body>
-  <!-- Config API/Tenant (adapte l’URL de ton backend) -->
-  <script>
-    window.NEXORA_API = window.NEXORA_API || "http://localhost:4000";
-    window.NEXORA_TENANT = window.NEXORA_TENANT || "default";
-  </script>
-
-  <a class="skip" href="#app">Aller au contenu</a>
-
-  <!-- Header -->
-  <header class="topbar container">
-    <a class="brand" href="#/">
-      <img src="/assets/logo.svg" alt="Nexora" width="28" height="28"/>
-      <strong>Nexora</strong><span class="badge">Futurist</span>
+  <header class="container" style="display:flex;align-items:center;gap:16px;justify-content:space-between">
+    <a href="#/" aria-label="Accueil Nexora" style="display:flex;gap:10px;align-items:center">
+      <img src="assets/logo.svg" alt="Logo Nexora" width="28" height="28">
+      <strong>Nexora</strong>
     </a>
-    <nav class="nav" aria-label="Navigation principale">
-      <a href="#/features" data-i18n="nav.features">Fonctionnalités</a>
-      <a href="#/integrations" data-i18n="nav.integrations">Intégrations</a>
-      <a href="#/pricing" data-i18n="nav.pricing">Tarifs</a>
-      <a href="#/blog" data-i18n="nav.blog">Blog</a>
-      <a href="#/docs" data-i18n="nav.docs">Docs</a>
-      <a href="#/roadmap" data-i18n="nav.roadmap">Roadmap</a>
-      <a href="#/status" data-i18n="nav.status">Status</a>
-      <a href="#/contact" class="btn" data-i18n="nav.cta">Essayer</a>
+
+    <nav role="navigation" class="nav">
+      <a href="#/features">Fonctionnalités</a>
+      <a href="#/pricing">Tarifs</a>
+      <a href="#/blog">Blog</a>
+      <a href="#/contact">Contact</a>
     </nav>
-    <div class="right">
-      <select id="lang" class="input small" aria-label="Langue">
+
+    <!-- Champ API éditable + langue -->
+    <div class="api-field">
+      <label for="apiUrl" class="badge">API</label>
+      <input id="apiUrl" class="api-input" placeholder="http://localhost:4000" aria-label="Adresse API">
+      <select id="langPicker" class="api-input" style="width:auto">
         <option value="fr">FR</option><option value="en">EN</option>
       </select>
-      <button id="themeToggle" class="btn ghost" aria-label="Basculer le thème">🌓</button>
     </div>
   </header>
 
-  <!-- Vue -->
-  <main id="app" class="container" tabindex="-1" aria-live="polite"></main>
+  <main id="app" tabindex="-1" class="container" aria-live="polite"></main>
 
-  <!-- Footer -->
-  <footer class="footer container">
-    <span>© <span id="y"></span> Nexora</span>
-    <nav>
-      <a href="#/changelog">Changelog</a>
-      <a href="/pages/privacy.html">Confidentialité</a>
-      <a href="/pages/terms.html">Conditions</a>
-      <a href="/feed.xml">RSS</a>
-      <a href="/sitemap.xml">Sitemap</a>
-    </nav>
+  <footer class="container" style="margin-top:40px">
+    <small>© <span id="y"></span> Nexora — IA Copilote. ·
+      <a href="#/privacy">Confidentialité</a> · <a href="#/terms">Conditions</a>
+    </small>
   </footer>
 
-  <!-- Consent -->
-  <div id="cookie-banner" class="cookie off" role="dialog" aria-live="polite">
-    <p>Nous utilisons des cookies pour mesurer l’usage et améliorer l’expérience.</p>
-    <div class="row">
-      <button class="btn" id="cookie-accept">Accepter</button>
-      <button class="btn ghost" id="cookie-decline">Refuser</button>
-    </div>
-  </div>
-
-  <script src="/router.js"></script>
-  <script src="/components.js"></script>
-  <script src="/i18n.js"></script>
-  <script src="/app.js"></script>
+  <script type="module" src="i18n.js"></script>
+  <script type="module" src="components.js"></script>
+  <script type="module" src="router.js"></script>
+  <script type="module" src="app.js"></script>
   <script>
-    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+    // PWA
+    (function(){ if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js'); }})();
+    document.getElementById('y').textContent = new Date().getFullYear();
   </script>
 </body>
 </html>
