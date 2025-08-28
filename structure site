@@ -5,24 +5,27 @@ nexora_site/
 ├─ router.js
 ├─ components.js
 ├─ i18n.js
-├─ manifest.webmanifest
-├─ sw.js
-├─ robots.txt
-├─ sitemap.xml
-├─ feed.xml
-├─ 404.html
-├─ netlify.toml
-├─ vercel.json
-├─ assets/
+├─ sw.js                      # Service Worker (PWA + offline)
+├─ manifest.webmanifest       # PWA manifest
+├─ robots.txt                 # SEO robots
+├─ sitemap.xml                # SEO sitemap
+├─ feed.xml                   # Flux RSS/Atom minimal
+├─ 404.html                   # Page d’erreur statique
+├─ netlify.toml               # (optionnel) config Netlify
+├─ vercel.json                # (optionnel) config Vercel
+│
+├─ assets/                    # Statics (images, icônes…)
 │  ├─ logo.svg
 │  └─ hero.svg
-├─ pages/
+│
+├─ pages/                     # Pages statiques autonomes
 │  ├─ privacy.html
 │  └─ terms.html
-└─ data/
-   ├─ posts.json
-   ├─ roadmap.json
-   └─ posts/
+│
+└─ data/                      # Contenu (blog, roadmap…)
+   ├─ posts.json              # métadonnées des articles
+   ├─ roadmap.json            # éléments "planned/building/done"
+   └─ posts/                  # corps des articles en Markdown
       ├─ bien-debuter-avec-nexora.md
       ├─ nexora-vision-2025.md
       └─ guide-attribution-omni.md
