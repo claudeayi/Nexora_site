@@ -1,64 +1,231 @@
+// app.js — Nexora_site FUTURIST (final)
+// Conserve tes routes & composants, ajoute API editable, fallbacks réseau (outbox), UX+.
+
 import { Router } from './router.js';
 import { el, card, section, fmtDate, kpi, $ } from './components.js';
 import { I18N, setLang } from './i18n.js';
 
-const API = window.NEXORA_API || "http://localhost:4000";
-const TENANT = window.NEXORA_TENANT || "default";
+/* =========================
+ *  Config & Persistence
+ * ========================= */
+const LS = {
+  API: 'nexora.api',
+  TENANT: 'nexora.tenant',
+  THEME: 'theme',
+  LANG: 'lang',
+  OUTBOX: 'nexora.outbox' // file d’attente offline
+};
 
-/* ============== UI Boot ============== */
+function api() {
+  return localStorage.getItem(LS.API) || window.NEXORA_API || 'http://localhost:4000';
+}
+function setApi(value) {
+  if (!value) return;
+  localStorage.setItem(LS.API, value);
+  window.NEXORA_API = value;
+  const input = document.getElementById('apiUrl');
+  if (input) input.value = value;
+}
+
+function tenant() {
+  return localStorage.getItem(LS.TENANT) || window.NEXORA_TENANT || 'default';
+}
+function setTenant(value) {
+  if (!value) return;
+  localStorage.setItem(LS.TENANT, value);
+  window.NEXORA_TENANT = value;
+}
+
+function getLang() {
+  return localStorage.getItem(LS.LANG) || 'fr';
+}
+
+/* =========================
+ *  Small Utils
+ * ========================= */
 document.getElementById('y').textContent = new Date().getFullYear();
 
-// thème
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+function toast(msg) {
+  const n = el('div', { class: 'card', html: `<p>${msg}</p>` });
+  Object.assign(n.style, { position: 'fixed', right: '12px', bottom: '12px', zIndex: 9999 });
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 2600);
+}
+
+function utms() {
+  const u = new URL(location.href);
+  return ['utm_source','utm_medium','utm_campaign','utm_term','utm_content']
+    .reduce((a,k)=>{ const v=u.searchParams.get(k); if(v) a[k]=v; return a; },{});
+}
+
+/* =========================
+ *  Network helpers + Outbox
+ * ========================= */
+function loadOutbox() {
+  try { return JSON.parse(localStorage.getItem(LS.OUTBOX) || '[]'); }
+  catch { return []; }
+}
+function saveOutbox(arr) {
+  localStorage.setItem(LS.OUTBOX, JSON.stringify(arr || []));
+}
+
+async function safeFetchJSON(path, { method='GET', body=null, headers={}, timeout=8000 } = {}) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeout);
+  try {
+    const r = await fetch(api() + path, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'x-tenant': tenant(), ...headers },
+      body: body ? JSON.stringify(body) : null,
+      signal: ctl.signal
+    });
+    clearTimeout(t);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json().catch(() => ({}));
+  } catch (e) {
+    clearTimeout(t);
+    throw e;
+  }
+}
+
+async function safePostWithOutbox(path, payload) {
+  try {
+    return await safeFetchJSON(path, { method: 'POST', body: payload });
+  } catch {
+    // Sauvegarde l’intention pour retry plus tard
+    const box = loadOutbox();
+    box.push({ path, payload, _ts: Date.now() });
+    saveOutbox(box);
+    throw new Error('offline_saved');
+  }
+}
+
+async function flushOutbox() {
+  const box = loadOutbox();
+  if (!box.length) return;
+  const rest = [];
+  for (const it of box) {
+    try {
+      await safeFetchJSON(it.path, { method: 'POST', body: it.payload });
+      await sleep(60);
+    } catch {
+      rest.push(it);
+    }
+  }
+  saveOutbox(rest);
+  if (box.length && !rest.length) toast('✅ Messages hors-ligne envoyés');
+}
+window.addEventListener('online', flushOutbox);
+
+/* =========================
+ *  Theme switch (light/dark)
+ * ========================= */
 (function(){
-  const pref = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-  if (pref==='light') document.documentElement.classList.add('light');
-  document.getElementById('themeToggle').onclick = ()=>{
+  const pref = localStorage.getItem(LS.THEME)
+            || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  if (pref === 'light') document.documentElement.classList.add('light');
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.onclick = () => {
     document.documentElement.classList.toggle('light');
-    localStorage.setItem('theme', document.documentElement.classList.contains('light')?'light':'dark');
+    localStorage.setItem(LS.THEME, document.documentElement.classList.contains('light') ? 'light' : 'dark');
   };
 })();
 
-// i18n
+/* =========================
+ *  i18n
+ * ========================= */
 (function(){
   const langSel = document.getElementById('lang');
-  const cur = localStorage.getItem('lang') || 'fr';
-  langSel.value = cur; setLang(cur);
-  langSel.onchange = () => setLang(langSel.value);
+  const cur = getLang();
+  if (langSel) {
+    langSel.value = cur; 
+    setLang(cur);
+    langSel.onchange = () => { setLang(langSel.value); localStorage.setItem(LS.LANG, langSel.value); location.hash = location.hash || '#/'; };
+  }
 })();
 
-// consent
+/* =========================
+ *  Consent & Pixel loader
+ * ========================= */
 (function(){
   const K='nexora_consent', v=localStorage.getItem(K);
   const banner = document.getElementById('cookie-banner');
   function loadPixel(){
     const s=document.createElement('script');
-    s.defer=true; s.src=(API)+'/events/sdk.js'; document.head.appendChild(s);
+    s.defer=true; s.src=(api())+'/events/sdk.js'; document.head.appendChild(s);
   }
+  if (!banner) return;
   if (v==='allow'){ banner.classList.add('off'); loadPixel(); return; }
   if (v==='deny'){ banner.classList.add('off'); return; }
   banner.classList.remove('off');
-  document.getElementById('cookie-accept').onclick=()=>{ localStorage.setItem(K,'allow'); banner.classList.add('off'); loadPixel(); };
-  document.getElementById('cookie-decline').onclick=()=>{ localStorage.setItem(K,'deny'); banner.classList.add('off'); };
+  const ok = document.getElementById('cookie-accept');
+  const no = document.getElementById('cookie-decline');
+  if (ok) ok.onclick=()=>{ localStorage.setItem(K,'allow'); banner.classList.add('off'); loadPixel(); };
+  if (no) no.onclick=()=>{ localStorage.setItem(K,'deny'); banner.classList.add('off'); };
 })();
 
-/* utils */
-function utms(){
-  const u=new URL(location.href);
-  return ['utm_source','utm_medium','utm_campaign','utm_term','utm_content']
-    .reduce((a,k)=>{ const v=u.searchParams.get(k); if(v) a[k]=v; return a; },{});
-}
-function toast(msg){ const n=el('div',{class:'card',html:`<p>${msg}</p>`}); n.style.position='fixed'; n.style.right='12px'; n.style.bottom='12px'; n.style.zIndex='99'; document.body.appendChild(n); setTimeout(()=>n.remove(),2500); }
+/* =========================
+ *  Header bindings (API/TENANT)
+ * ========================= */
+(function(){
+  const apiInput = document.getElementById('apiUrl');
+  if (apiInput) {
+    apiInput.value = api();
+    apiInput.addEventListener('change', ()=>{
+      setApi(apiInput.value.trim());
+      toast('🔧 API enregistrée');
+      flushOutbox();
+    });
+  }
+  // Si tu ajoutes un champ tenant:
+  const tInput = document.getElementById('tenantKey');
+  if (tInput) {
+    tInput.value = tenant();
+    tInput.addEventListener('change', ()=>{ setTenant(tInput.value.trim()); toast('🏷️ Tenant enregistré'); });
+  }
+})();
 
-/* ============== ROUTES ============== */
+/* =========================
+ *  Nav active + smooth-scroll
+ * ========================= */
+(function(){
+  const nav = document.querySelector('nav[role="navigation"]');
+  function mark(){
+    if (!nav) return;
+    const h = location.hash || '#/';
+    nav.querySelectorAll('a').forEach(a=>{
+      a.classList.toggle('active', h.startsWith(a.getAttribute('href')));
+    });
+  }
+  window.addEventListener('hashchange', mark);
+  mark();
+
+  // smooth scroll in-page anchors
+  document.addEventListener('click', (e)=>{
+    const a = e.target.closest('a[href^="#"]');
+    if (!a) return;
+    const id = a.getAttribute('href').slice(1);
+    if (!id) return;
+    const target = document.querySelector(`[data-route="${id}"], ${id}`);
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior:'smooth', block:'start' }); }
+  });
+})();
+
+/* =========================
+ *  ROUTES
+ * ========================= */
 
 // Home / Landing
 Router.on('/', async ({app})=>{
+  const lang = localStorage.getItem(LS.LANG) || 'fr';
   const hero = el('section',{class:'hero'},[
-    el('div',{html:`<h1><span class="grad">${I18N[localStorage.getItem('lang')||'fr'].hero.title}</span></h1>
-      <p class="sub">${I18N[localStorage.getItem('lang')||'fr'].hero.sub}</p>
+    el('div',{html:`<h1><span class="grad">${I18N[lang].hero.title}</span></h1>
+      <p class="sub">${I18N[lang].hero.sub}</p>
       <div class="row"><a class="btn" href="#/contact">Demander un accès</a><a class="btn ghost" href="#/pricing">Voir les tarifs</a></div>
       <div class="tags" style="margin-top:10px"><span class="tag">Multi-tenant</span><span class="tag">Sécurisé</span><span class="tag">API-first</span></div>`}),
-    el('div',{},[ el('img',{src:'/assets/hero.svg',alt:'Illustration Nexora',style:'max-width:100%;height:auto;border-radius:16px;border:1px solid #23305c;box-shadow:0 10px 30px rgba(0,0,0,.25)'}) ])
+    el('div',{},[ el('img',{src:'/assets/hero.svg',alt:'Illustration Nexora',loading:'lazy',style:'max-width:100%;height:auto;border-radius:16px;border:1px solid #23305c;box-shadow:0 10px 30px rgba(0,0,0,.25)'}) ])
   ]);
 
   const feats = el('div',{class:'grid'},[
@@ -70,7 +237,9 @@ Router.on('/', async ({app})=>{
     card('<h3>Sécurité</h3><p>JWT, RBAC, export, DPA, rétention.</p>')
   ]);
 
-  const overview = await fetch(`${API}/copilot/overview`).then(r=>r.json()).catch(()=>({leadCount:0,clickCount:0,eventCount:0,narrative:''}));
+  let overview = { leadCount:0, clickCount:0, eventCount:0, narrative:'' };
+  try { overview = await safeFetchJSON('/copilot/overview'); } catch {}
+
   const metrics = el('div',{class:'grid',html:
     kpi('Leads', overview.leadCount) + kpi('Clics', overview.clickCount) + kpi('Événements', overview.eventCount)
   });
@@ -100,18 +269,21 @@ Router.on('/', async ({app})=>{
 
   app.append(hero, section('Tout-en-un, vraiment.', feats.outerHTML), metrics, copilot, socialProof, blogTeaser);
 
-  // Copilot generate
-  document.getElementById('copilot').addEventListener('submit', async (e)=>{
+  // Copilot generate (avec outbox sur échec)
+  $('#copilot').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target).entries());
     try{
-      const r = await fetch(`${API}/copilot/generate`, {method:'POST',headers:{'Content-Type':'application/json','x-tenant':TENANT},body:JSON.stringify(data)});
-      const out = await r.json();
-      document.getElementById('cp-plan').textContent = JSON.stringify(out.plan||out,null,2);
-      document.getElementById('cp-var').textContent  = JSON.stringify(out.variants||[],null,2);
-      document.getElementById('cp-utm').textContent  = JSON.stringify(out.utm||{},null,2);
-      window.nexora?.track('copilot_generate', data);
-    }catch{ toast('Erreur – réessaie.'); }
+      const out = await safeFetchJSON('/copilot/generate', { method:'POST', body:data });
+      $('#cp-plan').textContent = JSON.stringify(out.plan||out,null,2);
+      $('#cp-var').textContent  = JSON.stringify(out.variants||[],null,2);
+      $('#cp-utm').textContent  = JSON.stringify(out.utm||{},null,2);
+      window.nexora?.track?.('copilot_generate', data);
+    }catch{
+      // stocke une intention de génération pour audit (facultatif)
+      try { await safePostWithOutbox('/events', { name:'copilot_generate_offline', properties:data, url:location.href }); } catch {}
+      toast('Hors-ligne : plan non généré, réessaie plus tard.');
+    }
   });
 
   // Blog teaser
@@ -147,9 +319,9 @@ Router.on('/integrations', ({app})=>{
 Router.on('/pricing', ({app})=>{
   app.append(el('h1',{class:'h',html:'Tarification'}));
   const panel = card(`<div class="grid pricing">
-    <div class="card"><h3>Free</h3><p><span class="price">$0</span>/mois</p><ul><li>1 projet · 1k événements</li><li>Leads & liens illimités</li></ul></div>
+    <div class="card"><h3>Free</h3><p><span class="price">0€</span>/mois</p><ul><li>1 projet · 1k événements</li><li>Leads & liens illimités</li></ul></div>
     <div class="card highlight">
-      <h3>Pro</h3><p><span id="pricePro" class="price">$19</span>/mois</p>
+      <h3>Pro</h3><p><span id="pricePro" class="price">29€</span>/mois</p>
       <div class="row"><button id="btnSuggest" class="btn ghost">Adapter à mon pays</button><button id="btnCheckout" class="btn">Souscrire</button></div>
       <small class="sub">Stripe/PayPal/CinetPay</small>
     </div>
@@ -159,17 +331,19 @@ Router.on('/pricing', ({app})=>{
 
   $('#btnSuggest').onclick = async ()=>{
     try{
-      const loc=Intl.DateTimeFormat().resolvedOptions().locale||'en-US';
-      const country=(loc.split('-')[1]||'US').toUpperCase();
-      const r=await fetch(`${API}/copilot/pricing/suggest`,{method:'POST',headers:{'Content-Type':'application/json','x-tenant':TENANT},body:JSON.stringify({currency:'USD',country,base_monthly:19})});
-      const p=await r.json(); $('#pricePro').textContent=`$${p.monthly}`;
-    }catch{}
+      const loc = Intl.DateTimeFormat().resolvedOptions().locale || 'fr-FR';
+      const country = (loc.split('-')[1] || 'FR').toUpperCase();
+      const out = await safeFetchJSON('/copilot/pricing/suggest', { method:'POST', body:{ currency:'EUR', country, base_monthly:29 } });
+      if (out?.monthly) $('#pricePro').textContent = `${out.monthly}€`;
+      toast('Tarif adapté pour ' + (out?.country || country));
+    }catch{ toast('API indisponible — tarifs par défaut'); }
   };
+
   $('#btnCheckout').onclick = async ()=>{
     try{
-      const r=await fetch(`${API}/billing/checkout`,{method:'POST',headers:{'Content-Type':'application/json','x-tenant':TENANT},body:JSON.stringify({plan:'pro',provider:'STRIPE'})});
-      const o=await r.json(); if (o?.url) location.href=o.url;
-    }catch{}
+      const o = await safeFetchJSON('/billing/checkout', { method:'POST', body:{ plan:'pro', provider:'STRIPE' } });
+      if (o?.url) location.href = o.url; else toast('Checkout indisponible');
+    }catch{ toast('Erreur de checkout'); }
   };
 });
 
@@ -204,12 +378,12 @@ Router.on('/docs', ({app})=>{
   app.append(el('h1',{class:'h',html:'Docs – Démarrer en 2 minutes'}));
   app.append(card(`<ol>
     <li>Ajoutez dans votre <code>&lt;head&gt;</code> :
-      <pre class="code">&lt;script&gt;window.NEXORA_API='${API}';window.NEXORA_TENANT='${TENANT}'&lt;/script&gt;
-&lt;script src='${API}/events/sdk.js'&gt;&lt;/script&gt;</pre></li>
+      <pre class="code">&lt;script&gt;window.NEXORA_API='${api()}';window.NEXORA_TENANT='${tenant()}'&lt;/script&gt;
+&lt;script src='${api()}/events/sdk.js'&gt;&lt;/script&gt;</pre></li>
     <li>Envoyez un lead :
-      <pre class="code">fetch('${API}/leads?t=${TENANT}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'demo@nexora.ai'})})</pre></li>
+      <pre class="code">fetch('${api()}/leads?t=${tenant()}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'demo@nexora.ai'})})</pre></li>
     <li>Copilote :
-      <pre class="code">fetch('${API}/copilot/generate',{method:'POST',headers:{'Content-Type':'application/json','x-tenant':'${TENANT}'},body:JSON.stringify({goal:'500 leads',audience:'PME',product:'Nexora'})})</pre></li>
+      <pre class="code">fetch('${api()}/copilot/generate',{method:'POST',headers:{'Content-Type':'application/json','x-tenant':'${tenant()}'},body:JSON.stringify({goal:'500 leads',audience:'PME',product:'Nexora'})})</pre></li>
   </ol>`));
 });
 
@@ -230,7 +404,7 @@ Router.on('/status', async ({app})=>{
     const results = [];
     for (const p of pathList){
       const t0=performance.now();
-      try{ const r=await fetch(`${API}${p}`,{headers:{'x-tenant':TENANT}}); results.push({p,ok:r.ok,ms:Math.round(performance.now()-t0)}); }
+      try{ const r=await fetch(`${api()}${p}`,{headers:{'x-tenant':tenant()}}); results.push({p,ok:r.ok,ms:Math.round(performance.now()-t0)}); }
       catch{ results.push({p,ok:false,ms:Math.round(performance.now()-t0)}); }
     }
     return results;
@@ -258,20 +432,24 @@ Router.on('/contact', ({app})=>{
     <div class="row"><button class="btn">Demander une démo</button><label class="sub"><input type="checkbox" id="nl"> S’abonner à la newsletter</label></div>
     <p class="sub" id="msg"></p>
   </form>`));
-  document.getElementById('lead').addEventListener('submit', async (e)=>{
+  $('#lead').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const v = Object.fromEntries(new FormData(e.target).entries());
-    const payload = { ...v, ...utms(), tag: (document.getElementById('nl').checked?'newsletter':undefined) };
+    const payload = { ...v, ...utms(), tag: ($('#nl').checked ? 'newsletter' : undefined) };
     try{
-      const r = await fetch(`${API}/leads?t=${encodeURIComponent(TENANT)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      if(!r.ok) throw new Error();
-      document.getElementById('msg').textContent='Merci ! Nous revenons très vite ✅';
-      e.target.reset(); window.nexora?.track('lead_submit',{email:payload.email});
-    }catch{ document.getElementById('msg').textContent='Erreur – réessaie.'; }
+      await safeFetchJSON(`/leads?t=${encodeURIComponent(tenant())}`, { method:'POST', body:payload });
+      $('#msg').textContent='Merci ! Nous revenons très vite ✅';
+      e.target.reset(); window.nexora?.track?.('lead_submit',{email:payload.email});
+    }catch{
+      try { await safePostWithOutbox('/events', { name:'lead_submit_offline', properties:payload, url:location.href }); } catch {}
+      $('#msg').textContent='Hors-ligne : demande enregistrée, nous l’enverrons plus tard ⏳';
+    }
   });
 });
 
-// util : markdown -> html (simple)
+/* =========================
+ *  Markdown util
+ * ========================= */
 function markdownToHTML(md){
   if(!md) return '';
   let html = md
@@ -281,10 +459,15 @@ function markdownToHTML(md){
     .replace(/\*\*(.*?)\*\*/gim,'<strong>$1</strong>')
     .replace(/\*(.*?)\*/gim,'<em>$1</em>')
     .replace(/`([^`]+)`/gim,'<code>$1</code>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim,'<img alt="$1" src="$2"/>')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim,'<img alt="$1" src="$2" loading="lazy"/>')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/gim,'<a href="$2" target="_blank" rel="noreferrer">$1</a>');
   html = html.replace(/^\s*-\s+(.*)$/gim,'<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>)/gims,'<ul>$1</ul>');
   html = html.replace(/^(?!<h\d|<ul|<li|<img|<p|<pre|<blockquote)(.+)$/gim,'<p>$1</p>');
   return html;
 }
+
+/* =========================
+ *  Boot
+ * ========================= */
+flushOutbox(); // tente d’envoyer la file d’attente au démarrage
